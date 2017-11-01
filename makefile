@@ -1,4 +1,6 @@
-run:main.o a.o b.o
+objects=main.o a.o b.o
+
+run:$(objects)
 	gcc -o run main.o a.o b.o
 
 main.o:main.c a.c a.h
