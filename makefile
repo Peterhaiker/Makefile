@@ -3,11 +3,9 @@ objects=main.o a.o b.o
 run:$(objects)
 	gcc -o run main.o a.o b.o
 
-main.o:main.c a.c a.h
-	gcc -c main.c a.c
-
-a.o:a.c a.h
-	gcc -c a.c
-
-b.o:b.c b.h
-	gcc -c b.c
+main.o:a.c b.c a.h b.h
+a.o:a.h
+b.o:b.h
+.PHONY:rm
+rm:
+	rm *.o
