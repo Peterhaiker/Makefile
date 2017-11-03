@@ -498,4 +498,156 @@ define $(dir)_print
 lpr $($(dir)_sources)
 endef
 ```
-个例子中定义了三个变量：`dir`，`foo_sources`和`foo_print`
+这个例子中定义了三个变量：`dir`，`foo_sources`和`foo_print`  
+
+### 追加变量值  
+```
+objects = main.o foo.o bar.o utils.o
+objects += another.o
+#这时，objects=main.o foo.o bar.o utils.o another.o
+```
+
+### override指示符  
+如果有变量是通常make的命令行参数设置的，那么Makefile中对这个变量的赋值会被忽略。如果你想在Makefile中设置这类参数的值，那么，你可以使用“override”指示符。其语法是：  
+```
+override <variable> = <value>
+override <variable> := <value>
+```
+当然，你还可以追加：  
+```
+override <variable> += <more text>
+```
+对于多行的变量定义，我们用define指示符，在define指示符前，也同样可以使用ovveride指示符，如：  
+```
+override define foo
+bar
+endef
+```
+
+### 多行变量  
+还有一种设置变量值的方法是使用define关键字。使用define关键字设置变量的值可以有换行，这有利于定义一系列的命令（前面我们讲过“命令包”的技术就是利用这个关键字）  
+define指示符后面跟的是变量的名字，而重起一行定义变量的值，定义是以endef关键字结束。其工作方式和“=”操作符一样。变量的值可以包含函数、命令、文字，或是其它变量。因为命令需要以[Tab]键开头，所以如果你用define定义的命令变量中没有以[Tab]键开头，那么make就不会把其认为是命令。示例：  
+```
+define two-lines
+echo foo
+echo $(bar)
+ende
+```
+
+### 环境变量  
+make运行时系统环境变量会载入其中，但是makefile中重名的变量会覆盖它，除非使用`-e`参数(系统环境变量覆盖局部变量)  
+因此，如果我们在环境变量中设置了“CFLAGS”环境变量，那么我们就可以在所有的Makefile中使用这个变量了。这对于我们使用统一的编译参数有比较大的好处。如果Makefile中定义了CFLAGS，那么则会使用Makefile中的这个变量，如果没有定义则使用系统环境变量的值，一个共性和个性的统一，很像“全局变量”和“局部变量”的特性  
+当make嵌套调用时（参见前面的“嵌套调用”章节），上层Makefile中定义的变量会以系统环境变量的方式传递到下层的Makefile中。当然，默认情况下，只有通过命令行设置的变量会被传递。而定义在文件中的变量，如果要向下层Makefile传递，则需要使用exprot关键字来声明。（参见前面章节）  
+当然，我并不推荐把许多的变量都定义在系统环境中，这样，在我们执行不用的Makefile时，拥有的是同一套系统变量，这可能会带来更多的麻烦  
+
+### 目标变量  
+前面讲述的都是在整个文件都可访问的全局变量。自动化变量除外(`$<`这种类型的自动化变量属于规则型变量)，这种变量的值依赖于规则的目标和依赖目标的定义  
+我也可以设置**局部变量**(target-specific variable)，可以和全局变量同名，因为它的作用域只在这条规则及连带规则中  
+```
+语法：
+<target ...> : <variable-assignment>
+
+<target ...> : overide <variable-assignment>
+```
+`variable-assignment`可以是前面讲过的各种赋值表达式，如“=”、“:=”、“+=”或是“？=”。第二个语法是针对于make命令行带入的变量，或是系统环境变量  
+这个特性非常的有用，当我们设置了这样一个变量，这个变量会作用到由这个目标所引发的所有的规则中去。如：  
+```
+prog : CFLAGS = -g
+prog : prog.o foo.o bar.o
+$(CC) $(CFLAGS) prog.o foo.o bar.o
+
+prog.o : prog.c
+$(CC) $(CFLAGS) prog.c
+
+foo.o : foo.c
+$(CC) $(CFLAGS) foo.c
+
+bar.o : bar.c
+$(CC) $(CFLAGS) bar.c
+```
+在这个示例中，不管全局的$(CFLAGS)的值是什么，在prog目标，以及其所引发的所有规则中（prog.o foo.o bar.o的规则），$(CFLAGS)的值都是“-g”  
+
+### 模式变量  
+在GNU的make中，还支持模式变量（Pattern-specific Variable），通过上面的目标变量中，我们知道，变量可以定义在某个目标上。模式变量的好处就是，我们可以给定一种“模式”，可以把变量定义在符合这种模式的所有目标上  
+我们知道，make的“模式”一般是至少含有一个“%”的，所以，我们可以以如下方式给所有以[.o]结尾的目标定义目标变量：  
+```
+%.o : CFLAGS = -O
+
+#模式变量语法：
+<pattern ...> : <variable-assignment>
+
+<pattern ...> : override <variable-assignment>
+```
+override同样是针对于系统环境传入的变量，或是make命令行指定的变量  
+
+## 使用条件判断  
+语法：  
+```
+<conditional-directive>
+<text-if-true>
+endif
+或
+<conditional-directive>
+<text-if-true>
+else
+<text-if-false>
+endif
+```
+其中，conditional-directive表示条件关键字，如`ifeq`。这样的关键字有4个：  
+* 第一个`ifeq`  
+    ```
+ifeq (<arg1>, <arg2>)
+ifeq '<arg1>' '<arg2>'
+ifeq "<arg1>" "<arg2>"
+ifeq "<arg1>" '<arg2>'
+ifeq '<arg1>' "<arg2>"
+    ```
+参数可以是函数，如：  
+```
+ifeq ($(strip $(foo)),)
+<text-if-empty>
+endif
+这个示例中使用了“strip”函数，如果这个函数的返回值是空（Empty），那么<text-if-empty>就生效
+```
+    第二个`ifneq`  
+    ```
+ifneq (<arg1>, <arg2>)
+ifneq '<arg1>' '<arg2>'
+ifneq "<arg1>" "<arg2>"
+ifneq "<arg1>" '<arg2>'
+ifneq '<arg1>' "<arg2>"
+    ```
+    第三个`ifdef`  
+    ```
+    ifdef <variable-name>
+    ```
+如果变量`variable-name`的值非空，那到表达式为真。否则，表达式为假。当然，`variable-name`同样可以是一个函数的返回值。注意，ifdef只是测试一个变量是否有值，其并不会把变量扩展到当前位置。还是来看两个例子：  
+```
+示例一：
+bar =
+foo = $(bar)
+ifdef foo
+frobozz = yes
+else
+frobozz = no
+endif
+
+示例二：
+foo =
+ifdef foo
+frobozz = yes
+else
+frobozz = no
+endif
+
+第一个例子中，“$(frobozz)”值是"yes"，第二个则是"no"  
+```
+* 第四个`ifndef`  
+    ```
+    ifndef <variable-name>
+    ```
+在`conditional-directive`这一行上，多余的空格是被允许的，但是不能以[Tab]键做为开始（不然就被认为是命令）。而注释符“#”同样也是安全的。“else”和“endif”也一样，只要不是以[Tab]键开始就行了  
+    特别注意的是，make是在读取Makefile时就计算条件表达式的值，并根据条件表达式的值来选择语句，所以，你最好不要把自动化变量（如“$@”等）放入条件表达式中，因为自动化变量是在运行时才有的。而且，为了避免混乱，make不允许把整个条件语句分成两部分放在不同的文件中  
+
+## 使用函数  
+
