@@ -807,7 +807,6 @@ $(word <n>,<text>)
 override CFLAGS += $(patsubst %,-I%,$(subst :, ,$(VPATH)))
 ```
 如果我们的“$(VPATH)”值是“src:../headers”，那么“$(patsubst %,-I%,$(subst :, ,$(VPATH)))”将返回“-Isrc -I../headers”，这正是cc或gcc搜索头文件路径的参数
-<<<<<<< HEAD
 
 ### 文件名操作函数  
 下面我们要介绍的函数主要是处理文件名的。每个函数的参数字符串都会被当做一个或是一系列的文件名来对待  
@@ -1125,4 +1124,5 @@ err: ; $(ERR)
 $(warning <text...>)
 ```
 这个函数很像error函数，只是它并不会让make退出，只是输出一段警告信息，而make继续执行  
->>>>>>> 843e201f851d175ba15a2da0381e5a3e45381252
+
+### make的运行  
